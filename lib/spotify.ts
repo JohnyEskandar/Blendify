@@ -4,6 +4,12 @@ const client_id = process.env.SPOTIFY_CLIENT_ID!
 const client_secret = process.env.SPOTIFY_CLIENT_SECRET!
 const redirect_uri = process.env.SPOTIFY_REDIRECT_URI!
 
+if (!client_id || !client_secret || !redirect_uri) {
+  throw new Error(
+    "Missing required Spotify environment variables: SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, or SPOTIFY_REDIRECT_URI"
+  )
+}
+
 const getBasicAuthHeader = () =>
   Buffer.from(`${client_id}:${client_secret}`).toString('base64')
 
