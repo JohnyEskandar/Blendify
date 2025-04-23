@@ -1,65 +1,197 @@
 // app/dashboard/seed-picker/SeedPickerClient.tsx
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import TrackSearch from '@/app/components/seed-picker/TrackSearch'
+import React, { useState } from 'react'
 
-export default function SeedPickerClient({ accessToken }: { accessToken: string }) {
-  const router = useRouter()
-  const [trackId, setTrackId] = useState('')
+type Track = {
+  id: string
+  uri: string
+  name: string
+  artists: { name: string }[]
+  album: { images: { url: string }[] }
+}
+
+type AudioFeatures = {
+  danceability: number
+  energy: number
+  valence: number
+  tempo: number
+  key: number
+  mode: number
+}
+
+export default function SeedPickerClient({
+  accessToken,
+}: {
+  accessToken: string
+}) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<Track[]>([])
+  const [selected, setSelected] = useState<Track | null>(null)
+  const [features, setFeatures] = useState<AudioFeatures | null>(null)
+  const [recommendations, setRecommendations] = useState<Track[]>([])
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const extractTrackId = (input: string) => {
+  // 1) Search for tracks
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!query.trim()) return
+    setError(''); setLoading(true)
+
     try {
-      if (input.includes('spotify.com/track')) {
-        const parts = input.split('/')
-        return parts[parts.length - 1].split('?')[0]
-      }
-      return input.trim()
-    } catch {
-      return ''
+      const res = await fetch(
+        `/api/search?q=${encodeURIComponent(query)}&accessToken=${accessToken}`
+      )
+      if (!res.ok) throw new Error('Search failed')
+      const data = await res.json()
+      setResults(data.tracks)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const id = extractTrackId(trackId)
+  // 2) Select one as the seed: fetch features + recs
+  const handleSelect = async (track: Track) => {
+    setSelected(track)
+    setFeatures(null)
+    setRecommendations([])
+    setError(''); setLoading(true)
 
-    if (!id || id.length !== 22) {
-      setError('Please enter a valid Spotify track ID or URL.')
-      return
+    try {
+    //  ⚡️ Genre-based recommendations
+    const res = await fetch(
+      `/api/genre-recommendations?seed=${track.id}&limit=15`,
+      { credentials: 'include' }
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({} as any));
+      throw new Error(body.error || 'Failed to load recommendations');
     }
+    const data: { tracks: Track[] } = await res.json();
+    setRecommendations(data.tracks);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-    setError('')
-    router.push(`/dashboard/seed-picker/generate?trackId=${id}`)
+  // 3) Create the playlist
+  const handleCreatePlaylist = async () => {
+    if (!selected) return
+    setError(''); setLoading(true)
+
+    try {
+      const res = await fetch(
+        `/api/create-playlist`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: `Blendify - ${selected.name} Mix`,
+            seedId: selected.id,
+            trackUris: recommendations.map((t) => t.uri),
+            includeSeed: true,
+          }),
+        }
+      )
+      if (!res.ok) throw new Error('Playlist creation failed')
+      const data = await res.json()
+      window.open(data.external_url, '_blank')
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <main className="max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">🎧 Create a Playlist</h1>
+    <main className="max-w-3xl mx-auto space-y-6 py-6">
+      <h1 className="text-3xl font-bold">🎶 Seed-Song Playlist Generator</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <label className="block text-sm font-medium text-[var(--secondary)]">
-          Enter a Track ID or Spotify URL:
-        </label>
+      {/* Search form */}
+      <form onSubmit={handleSearch} className="flex gap-2">
         <input
-          type="text"
-          placeholder="e.g. https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp"
-          className="w-full bg-[var(--spotify-dark-gray)] text-white px-4 py-2 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-          value={trackId}
-          onChange={(e) => setTrackId(e.target.value)}
+          className="flex-grow px-4 py-2 rounded bg-[var(--spotify-dark-gray)] text-white"
+          placeholder="Search for a seed song..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
         />
-
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-
-        <button type="submit">Generate Playlist</button>
+        <button
+          type="submit"
+          className="px-4 py-2 rounded bg-[var(--spotify-green)] text-black font-semibold"
+        >
+          {loading ? 'Searching…' : 'Search'}
+        </button>
       </form>
+      {error && <p className="text-red-400">{error}</p>}
 
-      <div className="mt-10">
-        <h2 className="text-xl font-semibold mb-2">Or search for a track instead:</h2>
-        <TrackSearch accessToken={accessToken} />
+      {/* Results grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {results.map((t) => (
+          <div
+            key={t.id}
+            className="cursor-pointer"
+            onClick={() => handleSelect(t)}
+          >
+            <img
+              src={t.album.images[0]?.url}
+              alt={t.name}
+              className="w-full h-32 object-cover rounded"
+            />
+            <p className="mt-2 text-sm font-medium truncate">
+              {t.name}
+            </p>
+            <p className="text-xs text-[var(--secondary)] truncate">
+              {t.artists.map((a) => a.name).join(', ')}
+            </p>
+          </div>
+        ))}
       </div>
+
+      {/* Audio Features */}
+      {selected && features && (
+        <section className="space-y-2">
+          <h2 className="text-xl font-semibold">Seed Audio Features</h2>
+          <ul className="grid grid-cols-2 gap-4">
+            <li>Danceability: {features.danceability}</li>
+            <li>Energy: {features.energy}</li>
+            <li>Valence: {features.valence}</li>
+            <li>Tempo: {features.tempo}</li>
+            <li>Key: {features.key}</li>
+            <li>Mode: {features.mode}</li>
+          </ul>
+        </section>
+      )}
+
+      {/* Recommendations */}
+      {recommendations.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold">Recommended Tracks</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {recommendations.map((t) => (
+              <div key={t.id}>
+                <img
+                  src={t.album.images[0]?.url}
+                  alt={t.name}
+                  className="w-full h-32 object-cover rounded"
+                />
+                <p className="mt-2 text-sm truncate">{t.name}</p>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={handleCreatePlaylist}
+            disabled={loading}
+            className="mt-2 px-6 py-3 bg-[var(--spotify-green)] text-black rounded font-semibold hover:opacity-90"
+          >
+            {loading ? 'Creating…' : 'Create Playlist'}
+          </button>
+        </section>
+      )}
     </main>
   )
 }

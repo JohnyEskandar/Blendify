@@ -9,8 +9,8 @@ export async function GET(req: NextRequest) {
   const profile = await getUserProfile(tokens.access_token)
 
   const res = NextResponse.redirect(new URL('/dashboard', req.url))
-  res.cookies.set('access_token', tokens.access_token, { httpOnly: true, path: '/' })
-  res.cookies.set('refresh_token', tokens.refresh_token, { httpOnly: true, path: '/' })
+  res.cookies.set('access_token', tokens.access_token, { httpOnly: false, path: '/' })
+  res.cookies.set('refresh_token', tokens.refresh_token, { httpOnly: false, path: '/' })
 
   return res
 }

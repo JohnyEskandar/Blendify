@@ -63,25 +63,22 @@ export async function getAudioAnalysis(trackId: string, accessToken: string): Pr
   return res.json()
 }
 
+
 export async function getRecommendationsFromSeed(
   seedTrackId: string,
-  accessToken: string
+  accessToken: string,
+  limit: number = 50
 ): Promise<any> {
-  const url = `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTrackId}&limit=50`
+  const url = `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTrackId}&limit=${limit}`
 
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   })
-
   if (!res.ok) {
     const errorText = await res.text()
-    console.error('⚠️ Spotify recommendation failed:')
-    console.error('→ URL:', url)
-    console.error('→ Track ID:', seedTrackId)
-    console.error('→ Access token (first 10 chars):', accessToken.slice(0, 10))
-    console.error('→ Raw response:', errorText || '[empty]')
+    console.error('⚠️ Spotify recommendation failed:', { url, seedTrackId, errorText })
     throw new Error(`Failed to fetch recommendations: ${errorText || '[empty]'}`)
   }
 
@@ -136,4 +133,62 @@ export async function addTracksToPlaylist(
   }
 
   return res.json()
+}
+
+export async function getAudioFeatures(
+  trackId: string,
+  accessToken: string
+): Promise<{
+  danceability: number
+  energy: number
+  valence: number
+  tempo: number
+  key: number
+  mode: number
+}> {
+  const res = await fetch(
+    `https://api.spotify.com/v1/audio-features/${trackId}`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch audio features for ${trackId}: ${await res.text()}`);
+  }
+  return res.json();
+}
+
+/** Fetch a single track by its Spotify ID */
+export async function getSpotifyTrack(trackId: string, accessToken: string) {
+  const res = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch track ${trackId}: ${await res.text()}`);
+  return res.json();
+}
+
+/** Fetch a single artist by its Spotify ID */
+export async function getArtistById(artistId: string, accessToken: string) {
+  const res = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch artist ${artistId}: ${await res.text()}`);
+  return res.json();
+}
+
+/** Search tracks by a given genre string */
+export async function searchTracksByGenre(
+  genre: string,
+  accessToken: string,
+  limit: number = 10
+) {
+  const url = `https://api.spotify.com/v1/search?q=genre:"${encodeURIComponent(
+    genre
+  )}"&type=track&limit=${limit}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`Genre search failed for ${genre}: ${await res.text()}`);
+  const data = await res.json();
+  return data.tracks.items;
 }
