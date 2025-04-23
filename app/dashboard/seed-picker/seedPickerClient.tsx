@@ -31,6 +31,7 @@ export default function SeedPickerClient({
   const [features, setFeatures] = useState<AudioFeatures | null>(null)
   const [recommendations, setRecommendations] = useState<Track[]>([])
   const [playlistName, setPlaylistName] = useState('')
+  const [limit, setLimit] = useState<number>(15)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -64,7 +65,7 @@ export default function SeedPickerClient({
     try {
     //  ⚡️ Genre-based recommendations
     const res = await fetch(
-      `/api/genre-recommendations?seed=${track.id}&limit=15`,
+      `/api/genre-recommendations?seed=${track.id}&limit=${limit}`,
       { credentials: 'include' }
     );
     if (!res.ok) {
@@ -115,6 +116,11 @@ export default function SeedPickerClient({
   return (
     <main className="max-w-3xl mx-auto space-y-6 py-6">
       <h1 className="text-3xl font-bold">🎶 Seed-Song Playlist Generator</h1>
+      <div className="flex items-center gap-2 mb-4">
+        <label className="text-sm text-[var(--secondary)]"># Tracks:</label>
+        <input type="number" min={1} max={100} value={limit} onChange={(e) => setLimit(Number(e.target.value))}
+        className="w-20 px-4 py-2 rounded bg-[var(--spotify-dark-gray)] text-white"/>
+      </div>
 
       {/* Search form */}
       <form onSubmit={handleSearch} className="flex gap-2">
