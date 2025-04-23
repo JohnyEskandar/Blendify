@@ -30,6 +30,7 @@ export default function SeedPickerClient({
   const [selected, setSelected] = useState<Track | null>(null)
   const [features, setFeatures] = useState<AudioFeatures | null>(null)
   const [recommendations, setRecommendations] = useState<Track[]>([])
+  const [playlistName, setPlaylistName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -82,22 +83,25 @@ export default function SeedPickerClient({
   // 3) Create the playlist
   const handleCreatePlaylist = async () => {
     if (!selected) return
-    setError(''); setLoading(true)
-
+    setError('')
+    setLoading(true)
+  
+    // Use the user’s name if provided, otherwise default
+    const name = playlistName.trim()
+      ? playlistName.trim()
+      : `Blendify - ${selected.name} Mix`
+  
     try {
-      const res = await fetch(
-        `/api/create-playlist`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: `Blendify - ${selected.name} Mix`,
-            seedId: selected.id,
-            trackUris: recommendations.map((t) => t.uri),
-            includeSeed: true,
-          }),
-        }
-      )
+      const res = await fetch(`/api/create-playlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,                   // ← custom or default
+          seedId: selected.id,
+          trackUris: recommendations.map((t) => t.uri),
+          includeSeed: true,
+        }),
+      })
       if (!res.ok) throw new Error('Playlist creation failed')
       const data = await res.json()
       window.open(data.external_url, '_blank')
@@ -171,6 +175,14 @@ export default function SeedPickerClient({
       {recommendations.length > 0 && (
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">Recommended Tracks</h2>
+          {/* ← New playlist name input */}
+          <input
+            type="text"
+            placeholder="Enter playlist name (or leave blank for default)"
+            value={playlistName}
+            onChange={(e) => setPlaylistName(e.target.value)}
+            className="w-full px-4 py-2 rounded bg-[var(--spotify-dark-gray)] text-white"
+          />
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {recommendations.map((t) => (
               <div key={t.id}>
