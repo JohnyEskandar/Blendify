@@ -192,3 +192,20 @@ export async function searchTracksByGenre(
   const data = await res.json();
   return data.tracks.items;
 }
+
+/** Fetch an artist's top tracks (for fallback when genre-based returns nothing) */
+export async function getArtistTopTracks(
+  artistId: string,
+  accessToken: string,
+  market: string = 'US'
+): Promise<any[]> {
+  const res = await fetch(
+    `https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=${market}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch top tracks for artist ${artistId}: ${await res.text()}`);
+  }
+  const data = await res.json();
+  return data.tracks;
+}

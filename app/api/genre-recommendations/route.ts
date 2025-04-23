@@ -7,6 +7,7 @@ import {
   getSpotifyTrack,
   getArtistById,
   searchTracksByGenre,
+  getArtistTopTracks,         // ← new import
 } from '@/lib/spotify';
 
 export async function GET(req: NextRequest) {
@@ -33,19 +34,34 @@ export async function GET(req: NextRequest) {
     artist.genres.forEach((g: string) => genreSet.add(g));
   }
 
-  // 3) for each genre, search and dedupe
-  const seen = new Map<string, any>();
-  const perGenre = Math.ceil(limit / Math.max(genreSet.size, 1)) + 2;
-  for (const genre of genreSet) {
-    const tracks = await searchTracksByGenre(genre, token, perGenre);
-    for (const t of tracks) {
-      if (t.id !== seed && !seen.has(t.id)) {
-        seen.set(t.id, t);
+  let recommendations: any[] = [];
+
+  if (genreSet.size > 0) {
+    // 3a) for each genre, search and dedupe
+    const seen = new Map<string, any>();
+    const perGenre = Math.ceil(limit / genreSet.size) + 2;
+    for (const genre of genreSet) {
+      const tracks = await searchTracksByGenre(genre, token, perGenre);
+      for (const t of tracks) {
+        if (t.id !== seed && !seen.has(t.id)) {
+          seen.set(t.id, t);
+        }
       }
     }
+    recommendations = Array.from(seen.values()).slice(0, limit);
+  } else {
+    // 3b) fallback: use each artist's top tracks
+    const seen = new Map<string, any>();
+    for (const artistId of artistIds) {
+      const tracks = await getArtistTopTracks(artistId, token);
+      for (const t of tracks) {
+        if (t.id !== seed && !seen.has(t.id)) {
+          seen.set(t.id, t);
+        }
+      }
+    }
+    recommendations = Array.from(seen.values()).slice(0, limit);
   }
 
-  // 4) take the first `limit` unique tracks
-  const recommendations = Array.from(seen.values()).slice(0, limit);
   return NextResponse.json({ tracks: recommendations });
 }
