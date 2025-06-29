@@ -1,30 +1,24 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/20FWPQk8)
-# CSE330
-Johny Eskandar JohnyEskandar 520800
+# Blendify 🎧
 
-Aleksei Juracsik alekseijuracsik 527267
+A full-stack playlist generator powered by the Spotify Web API.  
+Users can log in with Spotify, choose a seed song, and generate a playlist based on genre and audio features.
 
-run npm install, then npm run dev to run locally
+### Features
+- OAuth login with Spotify
+- Search and select a seed track
+- Genre-based recommendations using Spotify's API
+- Automatic playlist creation with selected tracks
 
-Spotify Beat Matching Website
+### Tech Stack
+- Next.js
+- TypeScript
+- TailwindCSS
+- Spotify API
 
-Rubric turned in on time (5 points)
-Remember to get it checked out by a TA!
-Languages/Frameworks used (30 points)
-20 - Next.js
-10 - Supabase DB
-Functionality (50 points)
-10 User can log in with their spotify
-10 Database saves user’s username and Spotify data, most listened songs, anything else relevant
-15 Users can generate a playlist with matched tempos based on a “seed song”
-10 Users can add a generated playlist directly into their Spotify account
-Best Practices (5 points)
-3 Code is readable and well-formatted
-2 All pages pass the HTML validator
-Creative Portion (15 points)
-5 Can search for a song
-5 dashboard displays all playlists
-5 can change number of tracks in playlist
-Approved by Todd.
+### Setup
+1. Clone the repo
+2. Create a `.env` file using `.env.example` as a reference
+3. Run `npm install`
+4. Run `npm run dev`
 
-
+> Note: This app requires approved Spotify credentials — contact me if you’d like access for demo purposes.
